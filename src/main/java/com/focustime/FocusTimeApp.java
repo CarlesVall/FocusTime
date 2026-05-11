@@ -244,6 +244,7 @@ public class FocusTimeApp extends Application {
         tasksPane.setPadding(new Insets(4));
         tasksPane.setPrefWrapLength(760);
         tasksPane.getStyleClass().add("task-grid");
+        configureTaskGridDragAndDrop();
 
         ScrollPane scrollPane = new ScrollPane(tasksPane);
         scrollPane.setFitToWidth(true);
@@ -750,8 +751,7 @@ public class FocusTimeApp extends Application {
                 Long sourceTaskId = Long.valueOf(dragboard.getString());
                 Long targetTaskId = task.getId();
                 if (!sourceTaskId.equals(targetTaskId)) {
-                    boolean insertAfterTarget = event.getY() > card.getHeight() / 2;
-                    runSafely(() -> reorderTasks(sourceTaskId, targetTaskId, insertAfterTarget));
+                    runSafely(() -> reorderTasks(sourceTaskId, targetTaskId));
                     completed = true;
                 }
             }
@@ -766,7 +766,29 @@ public class FocusTimeApp extends Application {
         });
     }
 
-    private void reorderTasks(Long sourceTaskId, Long targetTaskId, boolean insertAfterTarget) {
+    private void configureTaskGridDragAndDrop() {
+        tasksPane.setOnDragOver(event -> {
+            Dragboard dragboard = event.getDragboard();
+            if (dragboard.hasString()) {
+                event.acceptTransferModes(TransferMode.MOVE);
+            }
+            event.consume();
+        });
+
+        tasksPane.setOnDragDropped(event -> {
+            Dragboard dragboard = event.getDragboard();
+            boolean completed = false;
+            if (dragboard.hasString()) {
+                Long sourceTaskId = Long.valueOf(dragboard.getString());
+                runSafely(() -> moveTaskToEnd(sourceTaskId));
+                completed = true;
+            }
+            event.setDropCompleted(completed);
+            event.consume();
+        });
+    }
+
+    private void reorderTasks(Long sourceTaskId, Long targetTaskId) {
         List<Task> reorderedTasks = new ArrayList<>(allTasks);
         Task sourceTask = reorderedTasks.stream()
                 .filter(task -> task.getId().equals(sourceTaskId))
@@ -780,12 +802,34 @@ public class FocusTimeApp extends Application {
             return;
         }
 
-        reorderedTasks.remove(sourceTask);
+        int sourceIndex = reorderedTasks.indexOf(sourceTask);
         int targetIndex = reorderedTasks.indexOf(targetTask);
-        if (insertAfterTarget) {
+        reorderedTasks.remove(sourceTask);
+        targetIndex = reorderedTasks.indexOf(targetTask);
+        if (sourceIndex < targetIndex) {
             targetIndex++;
         }
         reorderedTasks.add(targetIndex, sourceTask);
+
+        List<Long> orderedTaskIds = reorderedTasks.stream()
+                .map(Task::getId)
+                .toList();
+        taskService.reorderTasks(orderedTaskIds);
+        refreshAll();
+    }
+
+    private void moveTaskToEnd(Long sourceTaskId) {
+        List<Task> reorderedTasks = new ArrayList<>(allTasks);
+        Task sourceTask = reorderedTasks.stream()
+                .filter(task -> task.getId().equals(sourceTaskId))
+                .findFirst()
+                .orElse(null);
+        if (sourceTask == null || reorderedTasks.indexOf(sourceTask) == reorderedTasks.size() - 1) {
+            return;
+        }
+
+        reorderedTasks.remove(sourceTask);
+        reorderedTasks.add(sourceTask);
 
         List<Long> orderedTaskIds = reorderedTasks.stream()
                 .map(Task::getId)
