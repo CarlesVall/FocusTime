@@ -18,6 +18,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.geometry.Bounds;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
@@ -37,9 +38,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.Node;
-import javafx.scene.input.ClipboardContent;
-import javafx.scene.input.Dragboard;
-import javafx.scene.input.TransferMode;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.GridPane;
@@ -125,6 +124,11 @@ public class FocusTimeApp extends Application {
     private final List<TodayEntryRow> allTodayEntryRows = new ArrayList<>();
     private Map<Long, Long> todaySecondsByTask = Map.of();
     private boolean showAllSessions;
+    private Long draggedTaskId;
+    private boolean draggingTaskCard;
+    private boolean suppressTaskCardClick;
+    private double dragStartSceneX;
+    private double dragStartSceneY;
 
     private enum CalendarMode {
         WEEKLY,
@@ -244,7 +248,6 @@ public class FocusTimeApp extends Application {
         tasksPane.setPadding(new Insets(4));
         tasksPane.setPrefWrapLength(760);
         tasksPane.getStyleClass().add("task-grid");
-        configureTaskGridDragAndDrop();
 
         ScrollPane scrollPane = new ScrollPane(tasksPane);
         scrollPane.setFitToWidth(true);
@@ -700,11 +703,16 @@ public class FocusTimeApp extends Application {
         card.setPrefWidth(240);
         card.setMinHeight(92);
         card.getStyleClass().add("task-card");
+        card.setUserData(task.getId());
         if (!task.isActive()) {
             card.getStyleClass().add("task-card-inactive");
         }
-        configureTaskCardDragAndDrop(card, task);
+        configureTaskCardMouseOrdering(card, task);
         card.setOnMouseClicked(event -> {
+            if (suppressTaskCardClick) {
+                suppressTaskCardClick = false;
+                return;
+            }
             if (event.isStillSincePress()) {
                 showTaskDialog(task);
             }
@@ -712,130 +720,163 @@ public class FocusTimeApp extends Application {
         return card;
     }
 
-    private void configureTaskCardDragAndDrop(VBox card, Task task) {
-        card.setOnDragDetected(event -> {
-            Dragboard dragboard = card.startDragAndDrop(TransferMode.MOVE);
-            ClipboardContent content = new ClipboardContent();
-            content.putString(task.getId().toString());
-            dragboard.setContent(content);
-            dragboard.setDragView(card.snapshot(null, null));
+    private void configureTaskCardMouseOrdering(VBox card, Task task) {
+        card.setOnMousePressed(event -> {
+            if (event.getButton() == MouseButton.PRIMARY) {
+                draggedTaskId = task.getId();
+                draggingTaskCard = false;
+                suppressTaskCardClick = false;
+                dragStartSceneX = event.getSceneX();
+                dragStartSceneY = event.getSceneY();
+            }
+        });
+
+        card.setOnMouseDragged(event -> {
+            if (draggedTaskId == null || !draggedTaskId.equals(task.getId()) || !event.isPrimaryButtonDown()) {
+                return;
+            }
+            double deltaX = event.getSceneX() - dragStartSceneX;
+            double deltaY = event.getSceneY() - dragStartSceneY;
+            if (!draggingTaskCard && Math.hypot(deltaX, deltaY) < 8) {
+                return;
+            }
+
+            draggingTaskCard = true;
             addStyleClass(card, "task-card-dragging");
+            updateTaskDropTarget(event.getSceneX(), event.getSceneY(), draggedTaskId);
             event.consume();
         });
 
-        card.setOnDragOver(event -> {
-            Dragboard dragboard = event.getDragboard();
-            if (dragboard.hasString() && !task.getId().toString().equals(dragboard.getString())) {
-                event.acceptTransferModes(TransferMode.MOVE);
+        card.setOnMouseReleased(event -> {
+            if (draggedTaskId == null || !draggedTaskId.equals(task.getId())) {
+                return;
             }
-            event.consume();
-        });
 
-        card.setOnDragEntered(event -> {
-            Dragboard dragboard = event.getDragboard();
-            if (dragboard.hasString() && !task.getId().toString().equals(dragboard.getString())) {
-                addStyleClass(card, "task-card-drop-target");
+            Long sourceTaskId = draggedTaskId;
+            boolean shouldReorder = draggingTaskCard;
+            int dropIndex = shouldReorder ? calculateTaskDropIndex(sourceTaskId, event.getSceneX(), event.getSceneY()) : -1;
+            clearTaskDragState();
+
+            if (shouldReorder) {
+                suppressTaskCardClick = true;
+                runSafely(() -> reorderTaskToIndex(sourceTaskId, dropIndex));
+                event.consume();
             }
-            event.consume();
-        });
-
-        card.setOnDragExited(event -> {
-            card.getStyleClass().remove("task-card-drop-target");
-            event.consume();
-        });
-
-        card.setOnDragDropped(event -> {
-            Dragboard dragboard = event.getDragboard();
-            boolean completed = false;
-            if (dragboard.hasString()) {
-                Long sourceTaskId = Long.valueOf(dragboard.getString());
-                Long targetTaskId = task.getId();
-                if (!sourceTaskId.equals(targetTaskId)) {
-                    runSafely(() -> reorderTasks(sourceTaskId, targetTaskId));
-                    completed = true;
-                }
-            }
-            card.getStyleClass().remove("task-card-drop-target");
-            event.setDropCompleted(completed);
-            event.consume();
-        });
-
-        card.setOnDragDone(event -> {
-            card.getStyleClass().remove("task-card-dragging");
-            event.consume();
         });
     }
 
-    private void configureTaskGridDragAndDrop() {
-        tasksPane.setOnDragOver(event -> {
-            Dragboard dragboard = event.getDragboard();
-            if (dragboard.hasString()) {
-                event.acceptTransferModes(TransferMode.MOVE);
-            }
-            event.consume();
-        });
-
-        tasksPane.setOnDragDropped(event -> {
-            Dragboard dragboard = event.getDragboard();
-            boolean completed = false;
-            if (dragboard.hasString()) {
-                Long sourceTaskId = Long.valueOf(dragboard.getString());
-                runSafely(() -> moveTaskToEnd(sourceTaskId));
-                completed = true;
-            }
-            event.setDropCompleted(completed);
-            event.consume();
-        });
+    private void updateTaskDropTarget(double sceneX, double sceneY, Long sourceTaskId) {
+        removeTaskDropTargetStyles();
+        Node target = findTaskCardAt(sceneX, sceneY, sourceTaskId);
+        if (target != null) {
+            addStyleClass(target, "task-card-drop-target");
+        }
     }
 
-    private void reorderTasks(Long sourceTaskId, Long targetTaskId) {
+    private Node findTaskCardAt(double sceneX, double sceneY, Long excludedTaskId) {
+        for (Node node : tasksPane.getChildren()) {
+            Long taskId = taskIdFrom(node);
+            if (taskId == null || taskId.equals(excludedTaskId)) {
+                continue;
+            }
+            Bounds bounds = node.localToScene(node.getBoundsInLocal());
+            if (bounds.contains(sceneX, sceneY)) {
+                return node;
+            }
+        }
+        return null;
+    }
+
+    private int calculateTaskDropIndex(Long sourceTaskId, double sceneX, double sceneY) {
+        int sourceOriginalIndex = indexOfTaskNode(sourceTaskId);
+        Node sourceNode = sourceOriginalIndex >= 0 ? tasksPane.getChildren().get(sourceOriginalIndex) : null;
+        if (sourceNode != null && sourceNode.localToScene(sourceNode.getBoundsInLocal()).contains(sceneX, sceneY)) {
+            return Math.min(sourceOriginalIndex, tasksPane.getChildren().size() - 1);
+        }
+
+        int visualIndex = 0;
+        for (int originalIndex = 0; originalIndex < tasksPane.getChildren().size(); originalIndex++) {
+            Node node = tasksPane.getChildren().get(originalIndex);
+            Long taskId = taskIdFrom(node);
+            if (taskId == null || taskId.equals(sourceTaskId)) {
+                continue;
+            }
+            Bounds bounds = node.localToScene(node.getBoundsInLocal());
+            if (bounds.contains(sceneX, sceneY)) {
+                return sourceOriginalIndex < originalIndex ? visualIndex + 1 : visualIndex;
+            }
+            visualIndex++;
+        }
+
+        visualIndex = 0;
+        for (Node node : tasksPane.getChildren()) {
+            Long taskId = taskIdFrom(node);
+            if (taskId == null || taskId.equals(sourceTaskId)) {
+                continue;
+            }
+            Bounds bounds = node.localToScene(node.getBoundsInLocal());
+            boolean beforeThisCard = sceneY < bounds.getMinY()
+                    || (sceneY <= bounds.getMaxY() && sceneX < bounds.getMinX() + bounds.getWidth() / 2);
+            if (beforeThisCard) {
+                return visualIndex;
+            }
+            visualIndex++;
+        }
+        return visualIndex;
+    }
+
+    private int indexOfTaskNode(Long taskId) {
+        for (int index = 0; index < tasksPane.getChildren().size(); index++) {
+            if (taskId.equals(taskIdFrom(tasksPane.getChildren().get(index)))) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    private Long taskIdFrom(Node node) {
+        return node.getUserData() instanceof Long taskId ? taskId : null;
+    }
+
+    private void reorderTaskToIndex(Long sourceTaskId, int targetIndex) {
         List<Task> reorderedTasks = new ArrayList<>(allTasks);
         Task sourceTask = reorderedTasks.stream()
                 .filter(task -> task.getId().equals(sourceTaskId))
                 .findFirst()
                 .orElse(null);
-        Task targetTask = reorderedTasks.stream()
-                .filter(task -> task.getId().equals(targetTaskId))
-                .findFirst()
-                .orElse(null);
-        if (sourceTask == null || targetTask == null) {
+        if (sourceTask == null) {
             return;
         }
 
-        int sourceIndex = reorderedTasks.indexOf(sourceTask);
-        int targetIndex = reorderedTasks.indexOf(targetTask);
         reorderedTasks.remove(sourceTask);
-        targetIndex = reorderedTasks.indexOf(targetTask);
-        if (sourceIndex < targetIndex) {
-            targetIndex++;
-        }
-        reorderedTasks.add(targetIndex, sourceTask);
+        int boundedTargetIndex = Math.max(0, Math.min(targetIndex, reorderedTasks.size()));
+        reorderedTasks.add(boundedTargetIndex, sourceTask);
 
         List<Long> orderedTaskIds = reorderedTasks.stream()
                 .map(Task::getId)
                 .toList();
+        List<Long> currentTaskIds = allTasks.stream()
+                .map(Task::getId)
+                .toList();
+        if (orderedTaskIds.equals(currentTaskIds)) {
+            return;
+        }
+
         taskService.reorderTasks(orderedTaskIds);
         refreshAll();
     }
 
-    private void moveTaskToEnd(Long sourceTaskId) {
-        List<Task> reorderedTasks = new ArrayList<>(allTasks);
-        Task sourceTask = reorderedTasks.stream()
-                .filter(task -> task.getId().equals(sourceTaskId))
-                .findFirst()
-                .orElse(null);
-        if (sourceTask == null || reorderedTasks.indexOf(sourceTask) == reorderedTasks.size() - 1) {
-            return;
+    private void clearTaskDragState() {
+        removeTaskDropTargetStyles();
+        if (draggedTaskId != null) {
+            tasksPane.getChildren().forEach(node -> node.getStyleClass().remove("task-card-dragging"));
         }
+        draggedTaskId = null;
+        draggingTaskCard = false;
+    }
 
-        reorderedTasks.remove(sourceTask);
-        reorderedTasks.add(sourceTask);
-
-        List<Long> orderedTaskIds = reorderedTasks.stream()
-                .map(Task::getId)
-                .toList();
-        taskService.reorderTasks(orderedTaskIds);
-        refreshAll();
+    private void removeTaskDropTargetStyles() {
+        tasksPane.getChildren().forEach(node -> node.getStyleClass().remove("task-card-drop-target"));
     }
 
     private void addStyleClass(Node node, String styleClass) {
