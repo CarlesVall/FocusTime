@@ -1,17 +1,44 @@
 package com.focustime.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+@Entity
+@Table(name = "time_entries")
 public class TimeEntry {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "task_id", nullable = false)
     private Long taskId;
+
+    @Column(name = "start_time", nullable = false)
     private LocalDateTime startTime;
+
+    @Column(name = "end_time", nullable = false)
     private LocalDateTime endTime;
+
+    @Column(name = "duration_seconds", nullable = false)
     private long durationSeconds;
+
+    @Column(name = "entry_date", nullable = false)
     private LocalDate entryDate;
+
     private String note;
+
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    protected TimeEntry() {
+    }
 
     public TimeEntry(Long id, Long taskId, LocalDateTime startTime, LocalDateTime endTime, long durationSeconds,
                      LocalDate entryDate, String note, LocalDateTime createdAt) {

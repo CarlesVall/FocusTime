@@ -2,7 +2,7 @@ package com.focustime;
 
 import com.focustime.model.Task;
 import com.focustime.model.TimeEntry;
-import com.focustime.repository.DatabaseManager;
+import com.focustime.repository.JpaManager;
 import com.focustime.repository.RepositoryException;
 import com.focustime.repository.TaskRepository;
 import com.focustime.repository.TimeEntryRepository;
@@ -89,6 +89,7 @@ public class FocusTimeApp extends Application {
     private TaskService taskService;
     private TimeTrackingService timeTrackingService;
     private TimerService timerService;
+    private JpaManager jpaManager;
 
     private final ObservableList<Task> allTasks = FXCollections.observableArrayList();
     private final ObservableList<Task> activeTasks = FXCollections.observableArrayList();
@@ -171,13 +172,20 @@ public class FocusTimeApp extends Application {
     }
 
     private void initializeServices() {
-        DatabaseManager databaseManager = new DatabaseManager();
-        databaseManager.initializeDatabase();
-        TaskRepository taskRepository = new TaskRepository(databaseManager);
-        TimeEntryRepository timeEntryRepository = new TimeEntryRepository(databaseManager);
+        jpaManager = new JpaManager();
+        jpaManager.initialize();
+        TaskRepository taskRepository = new TaskRepository(jpaManager);
+        TimeEntryRepository timeEntryRepository = new TimeEntryRepository(jpaManager);
         taskService = new TaskService(taskRepository, timeEntryRepository);
         timeTrackingService = new TimeTrackingService(timeEntryRepository);
         timerService = new TimerService(timeTrackingService);
+    }
+
+    @Override
+    public void stop() {
+        if (jpaManager != null) {
+            jpaManager.close();
+        }
     }
 
     private VBox createNavigation(StackPane content) {

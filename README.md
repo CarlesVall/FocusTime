@@ -99,7 +99,8 @@ La base de datos no se guarda dentro del repositorio ni junto al ejecutable port
 - JavaFX.
 - Maven.
 - SQLite.
-- JDBC.
+- JPA.
+- Hibernate ORM.
 
 ## Ejecutar en desarrollo
 
