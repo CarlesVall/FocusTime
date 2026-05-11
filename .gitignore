@@ -16,6 +16,7 @@ scripts/
 
 # Markdown notes/docs
 *.md
+!README.md
 
 # Logs and runtime dumps
 *.log
