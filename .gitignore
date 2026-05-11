@@ -1,0 +1,51 @@
+# Build outputs
+target/
+out/
+build/
+dist/
+
+# Local application data
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+focustime.db
+
+# Local distribution scripts
+scripts/
+
+# Markdown notes/docs
+*.md
+
+# Logs and runtime dumps
+*.log
+*.tmp
+*.pid
+hs_err_pid*
+replay_pid*
+
+# Java artifacts
+*.class
+*.jar
+*.war
+*.ear
+
+# IDE files
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.settings/
+.project
+.classpath
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment/local config
+.env
+.env.*
+*.local
