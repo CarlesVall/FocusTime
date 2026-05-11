@@ -116,12 +116,31 @@ mvn clean javafx:run
 
 ## Generar una version portable local
 
-El empaquetado local se realiza con `jpackage` mediante el script de distribucion del proyecto.
+El repositorio no incluye scripts de distribucion. Si se quiere crear una version portable, se puede hacer manualmente con Maven y `jpackage`.
 
-El script genera una carpeta portable con:
+Primero compila el proyecto y copia las dependencias runtime:
+
+```powershell
+mvn clean package dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=target\dist
+Copy-Item target\focustime-1.0.0-SNAPSHOT.jar target\dist\focustime-1.0.0-SNAPSHOT.jar -Force
+```
+
+Despues genera la imagen portable:
+
+```powershell
+jpackage `
+  --type app-image `
+  --name FocusTime `
+  --input target\dist `
+  --main-jar focustime-1.0.0-SNAPSHOT.jar `
+  --main-class com.focustime.FocusTimeLauncher `
+  --dest target\app
+```
+
+El resultado queda en:
 
 ```text
-FocusTime/
+target/app/FocusTime/
     FocusTime.exe
     app/
     runtime/
