@@ -10,6 +10,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class JpaManager implements AutoCloseable {
     private static final String PERSISTENCE_UNIT_NAME = "focustime";
@@ -21,6 +23,7 @@ public class JpaManager implements AutoCloseable {
     private EntityManagerFactory entityManagerFactory;
 
     public void initialize() {
+        configureHibernateLogging();
         getEntityManagerFactory();
     }
 
@@ -42,6 +45,12 @@ public class JpaManager implements AutoCloseable {
         properties.put("jakarta.persistence.jdbc.driver", "org.sqlite.JDBC");
         properties.put("jakarta.persistence.jdbc.url", "jdbc:sqlite:" + DATABASE_PATH.toAbsolutePath());
         return properties;
+    }
+
+    private void configureHibernateLogging() {
+        System.setProperty("org.jboss.logging.provider", "slf4j");
+        Logger.getLogger("org.hibernate").setLevel(Level.WARNING);
+        Logger.getLogger("org.hibernate.engine.jdbc.connections.internal.DriverManagerConnectionProviderImpl").setLevel(Level.SEVERE);
     }
 
     private void ensureDataDirectory() {
