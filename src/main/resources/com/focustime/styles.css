@@ -122,6 +122,17 @@
     -fx-translate-y: -1px;
 }
 
+.task-card-dragging {
+    -fx-opacity: 0.48;
+    -fx-border-color: #2f7d68;
+}
+
+.task-card-drop-target {
+    -fx-border-color: #d6a44c;
+    -fx-border-width: 2px;
+    -fx-background-color: #fffaf0;
+}
+
 .task-card-inactive {
     -fx-opacity: 0.62;
 }

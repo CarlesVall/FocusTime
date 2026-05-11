@@ -36,6 +36,7 @@ public class JpaManager implements AutoCloseable {
             ensureDataDirectory();
             migrateLegacyDatabaseIfNeeded();
             entityManagerFactory = Persistence.createEntityManagerFactory(PERSISTENCE_UNIT_NAME, properties());
+            initializeTaskPositions();
         }
         return entityManagerFactory;
     }
@@ -51,6 +52,22 @@ public class JpaManager implements AutoCloseable {
         System.setProperty("org.jboss.logging.provider", "slf4j");
         Logger.getLogger("org.hibernate").setLevel(Level.WARNING);
         Logger.getLogger("org.hibernate.engine.jdbc.connections.internal.DriverManagerConnectionProviderImpl").setLevel(Level.SEVERE);
+    }
+
+    private void initializeTaskPositions() {
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+        try (entityManager) {
+            entityManager.getTransaction().begin();
+            entityManager
+                    .createNativeQuery("UPDATE tasks SET position_index = id WHERE position_index IS NULL")
+                    .executeUpdate();
+            entityManager.getTransaction().commit();
+        } catch (RuntimeException e) {
+            if (entityManager.getTransaction().isActive()) {
+                entityManager.getTransaction().rollback();
+            }
+            throw new RepositoryException("No se pudo inicializar el orden de las tareas", e);
+        }
     }
 
     private void ensureDataDirectory() {

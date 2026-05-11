@@ -4,7 +4,6 @@ import com.focustime.model.Task;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceException;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
@@ -25,12 +24,9 @@ public class TaskRepository {
 
     public List<Task> findAll() {
         try (EntityManager entityManager = jpaManager.createEntityManager()) {
-            List<Task> tasks = entityManager
-                    .createQuery("SELECT task FROM Task task", Task.class)
+            return entityManager
+                    .createQuery("SELECT task FROM Task task ORDER BY task.positionIndex, lower(task.name), task.id", Task.class)
                     .getResultList();
-            return tasks.stream()
-                    .sorted(Comparator.comparing(Task::isActive).reversed().thenComparing(Task::getName, String.CASE_INSENSITIVE_ORDER))
-                    .toList();
         } catch (PersistenceException e) {
             throw new RepositoryException("No se pudieron cargar las tareas", e);
         }
@@ -39,7 +35,7 @@ public class TaskRepository {
     public List<Task> findActive() {
         try (EntityManager entityManager = jpaManager.createEntityManager()) {
             return entityManager
-                    .createQuery("SELECT task FROM Task task WHERE task.active = true ORDER BY lower(task.name)", Task.class)
+                    .createQuery("SELECT task FROM Task task WHERE task.active = true ORDER BY task.positionIndex, lower(task.name), task.id", Task.class)
                     .getResultList();
         } catch (PersistenceException e) {
             throw new RepositoryException("No se pudieron cargar las tareas", e);
@@ -99,6 +95,29 @@ public class TaskRepository {
             }
             return null;
         }, "No se pudo eliminar la tarea");
+    }
+
+    public int getNextPositionIndex() {
+        try (EntityManager entityManager = jpaManager.createEntityManager()) {
+            Integer maxPosition = entityManager
+                    .createQuery("SELECT COALESCE(MAX(task.positionIndex), -1) FROM Task task", Integer.class)
+                    .getSingleResult();
+            return maxPosition + 1;
+        } catch (PersistenceException e) {
+            throw new RepositoryException("No se pudo calcular la posicion de la tarea", e);
+        }
+    }
+
+    public void updatePositionIndexes(List<Long> orderedTaskIds) {
+        inTransaction(entityManager -> {
+            for (int index = 0; index < orderedTaskIds.size(); index++) {
+                Task task = entityManager.find(Task.class, orderedTaskIds.get(index));
+                if (task != null) {
+                    task.setPositionIndex(index);
+                }
+            }
+            return null;
+        }, "No se pudo actualizar el orden de las tareas");
     }
 
     private <T> T inTransaction(Function<EntityManager, T> operation, String errorMessage) {

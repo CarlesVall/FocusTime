@@ -27,7 +27,7 @@ public class TaskService {
         }
 
         LocalDateTime now = LocalDateTime.now();
-        Task task = new Task(null, normalizedName, dailyObjectiveMinutes, normalizedScheduledDays, true, now, now);
+        Task task = new Task(null, normalizedName, dailyObjectiveMinutes, normalizedScheduledDays, taskRepository.getNextPositionIndex(), true, now, now);
         return taskRepository.save(task);
     }
 
@@ -71,6 +71,13 @@ public class TaskService {
                 .orElseThrow(() -> new IllegalArgumentException("La tarea no existe."));
         timeEntryRepository.deleteByTaskId(id);
         taskRepository.deleteById(id);
+    }
+
+    public void reorderTasks(List<Long> orderedTaskIds) {
+        if (orderedTaskIds == null || orderedTaskIds.isEmpty()) {
+            return;
+        }
+        taskRepository.updatePositionIndexes(orderedTaskIds);
     }
 
     private String validateName(String name) {

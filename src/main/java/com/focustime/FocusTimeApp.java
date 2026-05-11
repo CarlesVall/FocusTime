@@ -37,6 +37,9 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.Node;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.GridPane;
@@ -699,8 +702,102 @@ public class FocusTimeApp extends Application {
         if (!task.isActive()) {
             card.getStyleClass().add("task-card-inactive");
         }
-        card.setOnMouseClicked(event -> showTaskDialog(task));
+        configureTaskCardDragAndDrop(card, task);
+        card.setOnMouseClicked(event -> {
+            if (event.isStillSincePress()) {
+                showTaskDialog(task);
+            }
+        });
         return card;
+    }
+
+    private void configureTaskCardDragAndDrop(VBox card, Task task) {
+        card.setOnDragDetected(event -> {
+            Dragboard dragboard = card.startDragAndDrop(TransferMode.MOVE);
+            ClipboardContent content = new ClipboardContent();
+            content.putString(task.getId().toString());
+            dragboard.setContent(content);
+            dragboard.setDragView(card.snapshot(null, null));
+            addStyleClass(card, "task-card-dragging");
+            event.consume();
+        });
+
+        card.setOnDragOver(event -> {
+            Dragboard dragboard = event.getDragboard();
+            if (dragboard.hasString() && !task.getId().toString().equals(dragboard.getString())) {
+                event.acceptTransferModes(TransferMode.MOVE);
+            }
+            event.consume();
+        });
+
+        card.setOnDragEntered(event -> {
+            Dragboard dragboard = event.getDragboard();
+            if (dragboard.hasString() && !task.getId().toString().equals(dragboard.getString())) {
+                addStyleClass(card, "task-card-drop-target");
+            }
+            event.consume();
+        });
+
+        card.setOnDragExited(event -> {
+            card.getStyleClass().remove("task-card-drop-target");
+            event.consume();
+        });
+
+        card.setOnDragDropped(event -> {
+            Dragboard dragboard = event.getDragboard();
+            boolean completed = false;
+            if (dragboard.hasString()) {
+                Long sourceTaskId = Long.valueOf(dragboard.getString());
+                Long targetTaskId = task.getId();
+                if (!sourceTaskId.equals(targetTaskId)) {
+                    boolean insertAfterTarget = event.getY() > card.getHeight() / 2;
+                    runSafely(() -> reorderTasks(sourceTaskId, targetTaskId, insertAfterTarget));
+                    completed = true;
+                }
+            }
+            card.getStyleClass().remove("task-card-drop-target");
+            event.setDropCompleted(completed);
+            event.consume();
+        });
+
+        card.setOnDragDone(event -> {
+            card.getStyleClass().remove("task-card-dragging");
+            event.consume();
+        });
+    }
+
+    private void reorderTasks(Long sourceTaskId, Long targetTaskId, boolean insertAfterTarget) {
+        List<Task> reorderedTasks = new ArrayList<>(allTasks);
+        Task sourceTask = reorderedTasks.stream()
+                .filter(task -> task.getId().equals(sourceTaskId))
+                .findFirst()
+                .orElse(null);
+        Task targetTask = reorderedTasks.stream()
+                .filter(task -> task.getId().equals(targetTaskId))
+                .findFirst()
+                .orElse(null);
+        if (sourceTask == null || targetTask == null) {
+            return;
+        }
+
+        reorderedTasks.remove(sourceTask);
+        int targetIndex = reorderedTasks.indexOf(targetTask);
+        if (insertAfterTarget) {
+            targetIndex++;
+        }
+        reorderedTasks.add(targetIndex, sourceTask);
+
+        List<Long> orderedTaskIds = reorderedTasks.stream()
+                .map(Task::getId)
+                .toList();
+        taskService.reorderTasks(orderedTaskIds);
+        refreshAll();
+    }
+
+    private void addStyleClass(Node node, String styleClass) {
+        if (!node.getStyleClass().contains(styleClass)) {
+            node.getStyleClass().add(styleClass);
+        }
     }
 
     private void showEditSessionDialog(TodayEntryRow row) {

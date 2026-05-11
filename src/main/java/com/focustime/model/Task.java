@@ -25,6 +25,9 @@ public class Task {
     @Column(name = "scheduled_days", nullable = false)
     private String scheduledDays;
 
+    @Column(name = "position_index")
+    private int positionIndex;
+
     @Column(nullable = false)
     private boolean active;
 
@@ -37,11 +40,12 @@ public class Task {
     protected Task() {
     }
 
-    public Task(Long id, String name, int dailyObjectiveMinutes, String scheduledDays, boolean active, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public Task(Long id, String name, int dailyObjectiveMinutes, String scheduledDays, int positionIndex, boolean active, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.name = name;
         this.dailyObjectiveMinutes = dailyObjectiveMinutes;
         this.scheduledDays = scheduledDays;
+        this.positionIndex = positionIndex;
         this.active = active;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -77,6 +81,14 @@ public class Task {
 
     public void setScheduledDays(String scheduledDays) {
         this.scheduledDays = scheduledDays;
+    }
+
+    public int getPositionIndex() {
+        return positionIndex;
+    }
+
+    public void setPositionIndex(int positionIndex) {
+        this.positionIndex = positionIndex;
     }
 
     public boolean isActive() {
