@@ -20,21 +20,21 @@ public class TimeEntry {
     @Column(name = "task_id", nullable = false)
     private Long taskId;
 
-    @Column(name = "start_time", nullable = false)
+    @Column(name = "start_time", nullable = false, columnDefinition = "TEXT")
     private LocalDateTime startTime;
 
-    @Column(name = "end_time", nullable = false)
+    @Column(name = "end_time", nullable = false, columnDefinition = "TEXT")
     private LocalDateTime endTime;
 
     @Column(name = "duration_seconds", nullable = false)
     private long durationSeconds;
 
-    @Column(name = "entry_date", nullable = false)
+    @Column(name = "entry_date", nullable = false, columnDefinition = "TEXT")
     private LocalDate entryDate;
 
     private String note;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "created_at", nullable = false, columnDefinition = "TEXT")
     private LocalDateTime createdAt;
 
     protected TimeEntry() {
