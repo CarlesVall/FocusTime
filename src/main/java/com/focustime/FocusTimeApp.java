@@ -38,6 +38,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.Node;
+import javafx.scene.image.Image;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.FlowPane;
@@ -156,6 +157,7 @@ public class FocusTimeApp extends Application {
         Scene scene = new Scene(root, 1280, 860);
         addStylesheet(scene);
         stage.setTitle("FocusTime");
+        addApplicationIcon(stage);
         stage.setScene(scene);
         stage.setMinWidth(1180);
         stage.setMinHeight(780);
@@ -169,6 +171,13 @@ public class FocusTimeApp extends Application {
         showView(content, createTasksView());
         refreshAll();
         stage.show();
+    }
+
+    private void addApplicationIcon(Stage stage) {
+        var iconStream = getClass().getResourceAsStream("/com/focustime/icon.png");
+        if (iconStream != null) {
+            stage.getIcons().add(new Image(iconStream));
+        }
     }
 
     private void addStylesheet(Scene scene) {
