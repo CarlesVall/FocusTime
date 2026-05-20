@@ -4,6 +4,19 @@ FocusTime es una aplicacion local de escritorio para registrar el tiempo dedicad
 
 La aplicacion funciona completamente en local: no tiene servidor, no usa login y guarda los datos en SQLite en la maquina del usuario.
 
+## Descargar
+
+Descarga la ultima version para Windows desde:
+
+```text
+https://github.com/CarlesVall/FocusTime/releases/latest
+```
+
+Opciones disponibles:
+
+- Instalador: `FocusTime-1.0.0-SNAPSHOT-windows-setup.exe`.
+- Portable: `FocusTime-1.0.0-SNAPSHOT-windows-portable.zip`.
+
 ## Funcionalidades principales
 
 - Crear, editar y eliminar tareas.
