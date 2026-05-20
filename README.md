@@ -6,11 +6,7 @@ La aplicacion funciona completamente en local: no tiene servidor, no usa login y
 
 ## Descargar
 
-Descarga la ultima version para Windows desde:
-
-```text
-https://github.com/CarlesVall/FocusTime/releases/latest
-```
+Descarga la ultima version para Windows desde [GitHub Releases](https://github.com/CarlesVall/FocusTime/releases/latest).
 
 Opciones disponibles:
 
