@@ -115,39 +115,33 @@ Desde la raiz del repositorio:
 mvn clean javafx:run
 ```
 
-## Generar una version portable local
+## Descargar la aplicacion
 
-El repositorio no incluye scripts de distribucion. Si se quiere crear una version portable, se puede hacer manualmente con Maven y `jpackage`.
+Los usuarios finales no necesitan Java, Maven ni clonar el repositorio.
 
-Primero compila el proyecto y copia las dependencias runtime:
-
-```powershell
-mvn clean package dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=target\dist
-Copy-Item target\focustime-1.0.0-SNAPSHOT.jar target\dist\focustime-1.0.0-SNAPSHOT.jar -Force
-```
-
-Despues genera la imagen portable:
-
-```powershell
-jpackage `
-  --type app-image `
-  --name FocusTime `
-  --input target\dist `
-  --main-jar focustime-1.0.0-SNAPSHOT.jar `
-  --main-class com.focustime.FocusTimeLauncher `
-  --dest target\app
-```
-
-El resultado queda en:
+La forma recomendada es descargar FocusTime desde la seccion de releases del proyecto:
 
 ```text
-target/app/FocusTime/
+https://github.com/CarlesVall/FocusTime/releases
+```
+
+Hay dos formatos para Windows:
+
+- `FocusTime-<version>-windows-setup.exe`: instalador normal de Windows.
+- `FocusTime-<version>-windows-portable.zip`: version portable sin instalacion.
+
+El instalador crea accesos directos y una entrada normal de aplicacion en Windows.
+
+El ZIP portable contiene:
+
+```text
+FocusTime/
     FocusTime.exe
     app/
     runtime/
 ```
 
-El ejecutable debe mantenerse junto a las carpetas `app/` y `runtime/`.
+El ejecutable portable debe mantenerse junto a las carpetas `app/` y `runtime/`.
 
 ## Estado del proyecto
 
